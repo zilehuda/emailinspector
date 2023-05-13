@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 )
 
 var dnsblServers = []string{
@@ -78,20 +79,46 @@ func IsEmailValid(email string) EmailInspectorResult {
 	}
 
 	domain := parts[1]
-	if IsDisposableEmail(domain) {
-		return EmailInspectorResult{false, "Email address is disposable"}
-	}
 
-	if !IsValidEmail(email) {
-		return EmailInspectorResult{false, "Invalid email format"}
-	}
+	wg := &sync.WaitGroup{}
+	chanRes := make(chan EmailInspectorResult, 4)
 
-	if !HasValidMXRecords(domain) {
-		return EmailInspectorResult{false, "Invalid MX records"}
-	}
+	wg.Add(4)
+	go func() {
+		defer wg.Done()
+		if IsDisposableEmail(domain) {
+			chanRes <- EmailInspectorResult{false, "Email address is disposable"}
+		}
+	}()
 
-	if IsBlacklisted(domain) {
-		return EmailInspectorResult{false, "Email address is blacklisted"}
+	go func() {
+		defer wg.Done()
+		if !IsValidEmail(email) {
+			chanRes <- EmailInspectorResult{false, "Invalid email format"}
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		if !HasValidMXRecords(domain) {
+			chanRes <- EmailInspectorResult{false, "Invalid MX records"}
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		if IsBlacklisted(domain) {
+			chanRes <- EmailInspectorResult{false, "Email address is blacklisted"}
+		}
+	}()
+
+	wg.Wait()
+	close(chanRes)
+
+	for result := range chanRes {
+		if !result.IsValid {
+			return result
+		}
 	}
 
 	return EmailInspectorResult{true, ""}
