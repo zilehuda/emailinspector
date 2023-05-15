@@ -123,7 +123,6 @@ func IsBlacklisted(domain string) bool {
 
 func IsEmailValid(email string) EmailInspectorResult {
 	parts := strings.Split(email, "@")
-	fmt.Println("parts")
 	if len(parts) != 2 {
 		return EmailInspectorResult{false, "Invalid email format"}
 	}
@@ -132,22 +131,17 @@ func IsEmailValid(email string) EmailInspectorResult {
 	if IsDisposableEmail(domain) {
 		return EmailInspectorResult{false, "Email address is disposable"}
 	}
-	fmt.Println("IsDisposableEmail")
 
 	if !IsValidEmail(email) {
 		return EmailInspectorResult{false, "Invalid email format"}
 	}
-	fmt.Println("IsValidEmail")
-
 	if !HasValidMXRecords(domain) {
 		return EmailInspectorResult{false, "Invalid MX records"}
 	}
-	fmt.Println("HasValidMXRecords")
 
 	if IsBlacklisted(domain) {
 		return EmailInspectorResult{false, "Email address is blacklisted"}
 	}
-	fmt.Println("IsBlacklisted")
 
 	return EmailInspectorResult{true, ""}
 }
