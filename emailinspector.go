@@ -1,10 +1,10 @@
 package emailinspector
 
 import (
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"net"
-	"os"
 	"regexp"
 	"strings"
 )
@@ -66,20 +66,25 @@ type EmailInspectorResult struct {
 	Message string
 }
 
-var disposableDomainFilePath = "disposable_domains.json"
+//go:embed disposable_domains.json
+var disposableDomainData []byte
+
 var disposableDomains []string
 
 func getDisposableDomains() *[]string {
-	data, err := os.ReadFile(disposableDomainFilePath)
-	if err != nil {
-		panic(err)
-	}
-	err = json.Unmarshal(data, &disposableDomains)
-	if err != nil {
-		panic(err)
+	if disposableDomains == nil {
+		disposableDomains = loadDisposableDomains()
 	}
 	return &disposableDomains
+}
 
+func loadDisposableDomains() []string {
+	var domains []string
+	err := json.Unmarshal(disposableDomainData, &domains)
+	if err != nil {
+		panic(fmt.Errorf("failed to unmarshal disposable domain data: %w", err))
+	}
+	return domains
 }
 
 func IsDisposableEmail(emailDomain string) bool {
