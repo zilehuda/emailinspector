@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	"sync"
 )
 
 var dnsblServers = []string{
@@ -119,52 +118,31 @@ func IsBlacklisted(domain string) bool {
 
 func IsEmailValid(email string) EmailInspectorResult {
 	parts := strings.Split(email, "@")
+	fmt.Println("parts")
 	if len(parts) != 2 {
 		return EmailInspectorResult{false, "Invalid email format"}
 	}
 
 	domain := parts[1]
-
-	wg := &sync.WaitGroup{}
-	chanRes := make(chan EmailInspectorResult, 4)
-
-	wg.Add(4)
-	go func() {
-		defer wg.Done()
-		if IsDisposableEmail(domain) {
-			chanRes <- EmailInspectorResult{false, "Email address is disposable"}
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-		if !IsValidEmail(email) {
-			chanRes <- EmailInspectorResult{false, "Invalid email format"}
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-		if !HasValidMXRecords(domain) {
-			chanRes <- EmailInspectorResult{false, "Invalid MX records"}
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-		if IsBlacklisted(domain) {
-			chanRes <- EmailInspectorResult{false, "Email address is blacklisted"}
-		}
-	}()
-
-	wg.Wait()
-	close(chanRes)
-
-	for result := range chanRes {
-		if !result.IsValid {
-			return result
-		}
+	if IsDisposableEmail(domain) {
+		return EmailInspectorResult{false, "Email address is disposable"}
 	}
+	fmt.Println("IsDisposableEmail")
+
+	if !IsValidEmail(email) {
+		return EmailInspectorResult{false, "Invalid email format"}
+	}
+	fmt.Println("IsValidEmail")
+
+	if !HasValidMXRecords(domain) {
+		return EmailInspectorResult{false, "Invalid MX records"}
+	}
+	fmt.Println("HasValidMXRecords")
+
+	if IsBlacklisted(domain) {
+		return EmailInspectorResult{false, "Email address is blacklisted"}
+	}
+	fmt.Println("IsBlacklisted")
 
 	return EmailInspectorResult{true, ""}
 }
